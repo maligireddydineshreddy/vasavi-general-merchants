@@ -3,7 +3,7 @@ import { dashboardStats, creditData, mockOrders } from '../data/orders';
 import { useApp } from '../context/AppContext';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { FiShoppingBag, FiTrendingUp, FiStar, FiCreditCard, FiPackage } from 'react-icons/fi';
 

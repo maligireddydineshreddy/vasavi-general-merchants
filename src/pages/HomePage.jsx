@@ -11,7 +11,6 @@ const REORDER  = products.filter(p => p.stock > 300).slice(0, 4);
 export default function HomePage() {
   const { user } = useApp();
   const navigate = useNavigate();
-  const [catSearch, setCatSearch] = useState('');
 
   return (
     <div className="pt-16 min-h-screen bg-gray-50">

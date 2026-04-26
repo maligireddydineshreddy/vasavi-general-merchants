@@ -15,7 +15,6 @@ export default function ProductDetailPage() {
 
   const [qty, setQty] = useState(product?.minOrderQty || 1);
   const [slot, setSlot] = useState('morning');
-  const [tab, setTab] = useState('details');
 
   if (!product) return (
     <div className="pt-24 text-center">
