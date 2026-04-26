@@ -60,14 +60,18 @@ export const AppProvider = ({ children }) => {
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
   // ── Auth ───────────────────────────────────────────────
-  const login = (userData) => {
+  const login = (userData, token) => {
     setUser(userData);
     localStorage.setItem('vasavi_user', JSON.stringify(userData));
-    showNotification(`Welcome back, ${userData.name}!`);
+    if (token) localStorage.setItem('vasavi_token', token);
+    showNotification(`Welcome, ${userData.name}!`);
   };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('vasavi_user');
+    localStorage.removeItem('vasavi_token');
+    clearCart();
   };
 
   return (

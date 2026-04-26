@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
 import { FiTrash2, FiMinus, FiPlus, FiShoppingBag, FiArrowRight, FiTag, FiTruck } from 'react-icons/fi';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQty, cartTotal, cartOriginalTotal, cartSavings, clearCart } = useApp();
+  const { cart, removeFromCart, updateQty, cartTotal, cartOriginalTotal, cartSavings, clearCart, user, showNotification } = useApp();
   const navigate = useNavigate();
+  const [placing, setPlacing] = useState(false);
 
   if (cart.length === 0) return (
     <div className="pt-16 min-h-screen bg-gray-50 flex items-center justify-center">
@@ -22,6 +24,28 @@ export default function CartPage() {
 
   const freeDelivery = cartTotal >= 5000;
   const remaining = Math.max(0, 5000 - cartTotal);
+  const deliveryCharge = freeDelivery ? 0 : 150;
+  const finalTotal = cartTotal + deliveryCharge;
+
+  const handlePlaceOrder = async () => {
+    setPlacing(true);
+    try {
+      const items = cart.map(item => ({
+        name: item.name,
+        qty: item.qty,
+        price: Math.round(item.price * (1 - (item.bulkDiscount || 0) / 100)),
+        category: item.category,
+      }));
+      await api.placeOrder(items, finalTotal, 'Morning', user?.address || '');
+      showNotification('Order placed successfully!');
+      clearCart();
+      navigate('/orders');
+    } catch (err) {
+      showNotification(err.error || 'Failed to place order. Please try again.', 'error');
+    } finally {
+      setPlacing(false);
+    }
+  };
 
   return (
     <div className="pt-16 min-h-screen bg-gray-50">
@@ -38,7 +62,7 @@ export default function CartPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 mb-6 flex items-center gap-3">
             <FiTruck className="text-amber-600 text-xl flex-shrink-0" />
             <p className="text-amber-700 text-sm font-semibold">
-              Add ₹{remaining.toLocaleString('en-IN', {maximumFractionDigits:0})} more for <span className="font-bold">FREE delivery</span>!
+              Add ₹{remaining.toLocaleString('en-IN', { maximumFractionDigits: 0 })} more for <span className="font-bold">FREE delivery</span>!
             </p>
           </div>
         )}
@@ -53,19 +77,17 @@ export default function CartPage() {
           {/* Items */}
           <div className="lg:col-span-2 space-y-4">
             {cart.map(item => {
-              const discounted = item.price * (1 - (item.bulkDiscount||0)/100);
+              const discounted = item.price * (1 - (item.bulkDiscount || 0) / 100);
               const itemTotal = discounted * item.qty;
               const itemSavings = (item.price - discounted) * item.qty;
               return (
                 <div key={item.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex gap-4 animate-fade-in">
-                  {/* Image */}
                   <div className="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-50">
                     <img src={item.image} alt={item.name}
                       className="w-full h-full object-cover"
-                      onError={e => {e.target.src='https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&q=80';}}
+                      onError={e => { e.target.src = 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&q=80'; }}
                     />
                   </div>
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
                       <div>
@@ -80,7 +102,6 @@ export default function CartPage() {
                     </div>
 
                     <div className="flex items-center justify-between mt-3">
-                      {/* Qty controls */}
                       <div className="flex items-center gap-2">
                         <button onClick={() => updateQty(item.id, item.qty - 1)}
                           className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:border-green-500 hover:text-green-700 transition-all">
@@ -94,8 +115,8 @@ export default function CartPage() {
                         <span className="text-gray-500 text-xs">{item.unit}</span>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-gray-900">₹{itemTotal.toLocaleString('en-IN', {maximumFractionDigits:0})}</p>
-                        {itemSavings > 0 && <p className="text-xs text-green-600 font-semibold">Save ₹{itemSavings.toLocaleString('en-IN', {maximumFractionDigits:0})}</p>}
+                        <p className="font-bold text-gray-900">₹{itemTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                        {itemSavings > 0 && <p className="text-xs text-green-600 font-semibold">Save ₹{itemSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>}
                       </div>
                     </div>
 
@@ -118,11 +139,11 @@ export default function CartPage() {
               <div className="space-y-3 mb-5">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal (MRP)</span>
-                  <span className="text-gray-500 line-through">₹{cartOriginalTotal.toLocaleString('en-IN', {maximumFractionDigits:0})}</span>
+                  <span className="text-gray-500 line-through">₹{cartOriginalTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 flex items-center gap-1"><FiTag className="text-green-600" />Bulk Discount</span>
-                  <span className="text-green-600 font-semibold">-₹{cartSavings.toLocaleString('en-IN', {maximumFractionDigits:0})}</span>
+                  <span className="text-green-600 font-semibold">-₹{cartSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 flex items-center gap-1"><FiTruck />Delivery</span>
@@ -130,19 +151,23 @@ export default function CartPage() {
                 </div>
                 <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span className="text-green-700">₹{(cartTotal + (freeDelivery ? 0 : 150)).toLocaleString('en-IN', {maximumFractionDigits:0})}</span>
+                  <span className="text-green-700">₹{finalTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
                 </div>
               </div>
 
               {cartSavings > 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-5 text-center">
-                  <p className="text-green-700 font-bold text-sm">🎉 You save ₹{cartSavings.toLocaleString('en-IN', {maximumFractionDigits:0})} on this order!</p>
+                  <p className="text-green-700 font-bold text-sm">🎉 You save ₹{cartSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 })} on this order!</p>
                 </div>
               )}
 
-              <button onClick={() => { alert('Order placed successfully! 🎉\n\nOrder confirmation will be sent to your phone.'); clearCart(); navigate('/orders'); }}
-                className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2">
-                Place Order <FiArrowRight />
+              <button onClick={handlePlaceOrder} disabled={placing}
+                className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-70">
+                {placing ? (
+                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Placing Order...</span></>
+                ) : (
+                  <><span>Place Order</span><FiArrowRight /></>
+                )}
               </button>
 
               <Link to="/products" className="block text-center text-sm text-green-700 font-semibold mt-4 hover:underline">

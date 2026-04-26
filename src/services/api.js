@@ -1,15 +1,40 @@
-// ============================================================
-// API Service — Mock implementation (swap with real API later)
-// ============================================================
-import { products } from '../data/products';
-import { mockOrders } from '../data/orders';
+import axios from 'axios';
 
-const delay = (ms = 500) => new Promise(res => setTimeout(res, ms));
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+const client = axios.create({ baseURL: BASE_URL });
+
+// Attach JWT token to every request
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('vasavi_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Normalise errors to a consistent shape
+client.interceptors.response.use(
+  (res) => res.data,
+  (err) => Promise.reject(err.response?.data || { error: 'Network error' })
+);
 
 export const api = {
-  getProducts: async () => { await delay(400); return { data: products, success: true }; },
-  getProductById: async (id) => { await delay(300); const p = products.find(p=>p.id===+id); return p ? { data:p, success:true } : { error:'Not found', success:false }; },
-  getOrders: async () => { await delay(500); return { data: mockOrders, success: true }; },
-  postCart: async (items) => { await delay(300); return { data: { orderId:`ORD-${Date.now()}`, items, status:'Pending' }, success: true }; },
-  searchProducts: async (q) => { await delay(200); return { data: products.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())), success:true }; },
+  // Auth
+  login: (phone, password) => client.post('/auth/login', { phone, password }),
+  signup: (name, shop, phone, password) => client.post('/auth/signup', { name, shop, phone, password }),
+
+  // Products
+  getProducts: (params = {}) => client.get('/products', { params }),
+  getProductById: (id) => client.get(`/products/${id}`),
+
+  // Orders
+  getOrders: () => client.get('/orders'),
+  placeOrder: (items, total, deliverySlot, address) =>
+    client.post('/orders', { items, total, deliverySlot, address }),
+
+  // User
+  getMe: () => client.get('/users/me'),
+  updateMe: (data) => client.put('/users/me', data),
+
+  // Dashboard
+  getDashboardStats: () => client.get('/dashboard/stats'),
 };

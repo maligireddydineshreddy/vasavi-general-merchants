@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
 import { FiUser, FiLock, FiPhone, FiEye, FiEyeOff, FiShoppingBag } from 'react-icons/fi';
-
-const DEMO = { name:'Ravi Shankar', shop:'Sri Lakshmi Traders', phone:'9876543210', password:'demo123' };
 
 export default function LoginPage() {
   const { login } = useApp();
@@ -11,23 +10,31 @@ export default function LoginPage() {
   const [mode, setMode] = useState('login');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name:'', shop:'', phone:'', password:'' });
+  const [form, setForm] = useState({ name: '', shop: '', phone: '', password: '' });
   const [error, setError] = useState('');
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
     if (!form.phone || !form.password) { setError('Please fill all fields'); return; }
-    if (mode === 'login' && (form.phone !== DEMO.phone || form.password !== DEMO.password)) {
-      setError('Use demo: 9876543210 / demo123'); return;
-    }
+    if (mode === 'signup' && !form.name) { setError('Please enter your name'); return; }
+
     setLoading(true);
-    setTimeout(() => {
-      login({ name: mode === 'signup' ? form.name : DEMO.name, shop: mode === 'signup' ? form.shop : DEMO.shop, phone: form.phone });
+    try {
+      const res = mode === 'login'
+        ? await api.login(form.phone, form.password)
+        : await api.signup(form.name, form.shop, form.phone, form.password);
+
+      login(res.user, res.token);
       navigate('/');
-    }, 1200);
+    } catch (err) {
+      setError(err.error || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,7 +44,6 @@ export default function LoginPage() {
         <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=1600&q=80"
           alt="bg" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-br from-blue-950/90 via-blue-900/80 to-green-900/85" />
-        {/* Decorative blobs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
       </div>
@@ -56,48 +62,41 @@ export default function LoginPage() {
 
           {/* Toggle */}
           <div className="flex bg-white/10 rounded-2xl p-1 mb-6">
-            {['login','signup'].map(m => (
-              <button key={m} onClick={() => setMode(m)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${mode===m ? 'bg-white text-blue-900 shadow-sm' : 'text-white/70 hover:text-white'}`}>
-                {m==='login' ? 'Login' : 'Sign Up'}
+            {['login', 'signup'].map(m => (
+              <button key={m} onClick={() => { setMode(m); setError(''); }}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${mode === m ? 'bg-white text-blue-900 shadow-sm' : 'text-white/70 hover:text-white'}`}>
+                {m === 'login' ? 'Login' : 'Sign Up'}
               </button>
             ))}
           </div>
 
-          {/* Demo hint */}
-          {mode==='login' && (
-            <div className="bg-green-500/15 border border-green-400/30 rounded-xl px-4 py-3 mb-5 text-center">
-              <p className="text-green-300 text-xs font-semibold">Demo: 9876543210 / demo123</p>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode==='signup' && (
+            {mode === 'signup' && (
               <>
                 <div className="relative">
                   <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" />
                   <input className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm"
-                    placeholder="Your Full Name" value={form.name} onChange={e=>set('name',e.target.value)} />
+                    placeholder="Your Full Name" value={form.name} onChange={e => set('name', e.target.value)} />
                 </div>
                 <div className="relative">
                   <FiShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" />
                   <input className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm"
-                    placeholder="Shop / Business Name" value={form.shop} onChange={e=>set('shop',e.target.value)} />
+                    placeholder="Shop / Business Name (optional)" value={form.shop} onChange={e => set('shop', e.target.value)} />
                 </div>
               </>
             )}
             <div className="relative">
               <FiPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" />
               <input type="tel" className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm"
-                placeholder="Mobile Number" value={form.phone} onChange={e=>set('phone',e.target.value)} maxLength={10} />
+                placeholder="Mobile Number" value={form.phone} onChange={e => set('phone', e.target.value)} maxLength={10} />
             </div>
             <div className="relative">
               <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" />
-              <input type={showPwd?'text':'password'} className="w-full pl-11 pr-12 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm"
-                placeholder="Password" value={form.password} onChange={e=>set('password',e.target.value)} />
-              <button type="button" onClick={()=>setShowPwd(!showPwd)}
+              <input type={showPwd ? 'text' : 'password'} className="w-full pl-11 pr-12 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm"
+                placeholder="Password" value={form.password} onChange={e => set('password', e.target.value)} />
+              <button type="button" onClick={() => setShowPwd(!showPwd)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300 hover:text-white">
-                {showPwd?<FiEyeOff/>:<FiEye/>}
+                {showPwd ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
 
@@ -106,9 +105,9 @@ export default function LoginPage() {
             <button type="submit" disabled={loading}
               className="w-full py-3.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2 mt-2">
               {loading ? (
-                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/><span>Please wait...</span></>
+                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Please wait...</span></>
               ) : (
-                <span>{mode==='login' ? 'Login to Platform' : 'Create Account'}</span>
+                <span>{mode === 'login' ? 'Login to Platform' : 'Create Account'}</span>
               )}
             </button>
           </form>

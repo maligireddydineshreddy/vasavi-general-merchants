@@ -4,3 +4,7 @@ node_modules/
 build/
 .DS_Store
 .claude/
+backend/vasavi.db
+backend/node_modules
+backend/*.db-shm
+backend/*.db-wal
