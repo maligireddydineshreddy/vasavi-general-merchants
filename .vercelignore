@@ -1,0 +1,4 @@
+backend/node_modules
+backend/vasavi.db
+backend/*.db-shm
+backend/*.db-wal
